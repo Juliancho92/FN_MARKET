@@ -1,34 +1,45 @@
-# Aplicación de Emergencias y Seguridad Ciudadana
+# FN MARKET
 
-## Contexto General
-Aplicación móvil de emergencias que combina dos servicios críticos: solicitud de ambulancias y reporte de robos con geolocalización en tiempo real. La aplicación conecta usuarios con los servicios de emergencia más cercanos, similar al modelo de DiDi pero enfocado en situaciones de urgencia médica y seguridad ciudadana.
+Aplicación web e-commerce para venta de productos internos empresariales.
 
-## Características Principales
+## Tech Stack
 
-### 1. Servicio de Ambulancias
-*   Solicitud inmediata con botón de emergencia.
-*   Geolocalización GPS en tiempo real.
-*   Algoritmo de búsqueda de ambulancia más cercana.
-*   Estimación de tiempo de llegada (ETA).
-*   Clasificación de urgencias (Crítico, Urgente, Moderado).
-*   Información médica básica del usuario.
+- **Backend**: FastAPI
+- **Base de datos**: SQLite (Desarrollo) / PostgreSQL (Producción)
+- **Inventario**: Google Sheets API
+- **Almacenamiento**: Cloudinary
+- **Frontend**: React/Vue (Planeado)
+- **Deploy**: Netlify (Frontend) + Serverless (Backend)
 
-### 2. Sistema de Reporte de Robos
-*   Botón de pánico discreto.
-*   Marcadores en tiempo real de zonas inseguras ("zonas calientes").
-*   Alerta comunitaria activa en radio cercano.
-*   Grabación de audio/video discreta.
-*   Sistema de avistamiento colaborativo.
+## Estructura del Proyecto
 
-### 3. Mapa Interactivo
-*   Ubicación de usuarios, ambulancias y patrullas.
-*   Marcadores de incidentes recientes.
-*   Zonas de alto riesgo.
+```
+fn-market/
+├── app/
+│   ├── main.py
+│   ├── models/
+│   ├── routers/
+│   └── ...
+├── requirements.txt
+└── ...
+```
 
-## Stack Tecnológico (Propuesto)
-*   **Frontend:** React Native / Streamlit (Prototipo)
-*   **Backend:** Firebase (Auth, Firestore, Realtime DB, Storage, Functions)
-*   **Mapas:** Google Maps API / Mapbox
+## Instalación
 
-## Estado del Proyecto
-Iniciando configuración y conexión con repositorio.
+1. Crear entorno virtual:
+   ```bash
+   python -m venv venv
+   .\venv\Scripts\activate
+   ```
+2. Instalar dependencias:
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. Ejecutar servidor:
+   ```bash
+   uvicorn app.main:app --reload
+   ```
+
+## API Documentation
+
+Una vez ejecutando, visitar: `http://localhost:8000/docs`
