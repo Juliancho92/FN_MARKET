@@ -2,116 +2,200 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import time
+from datetime import datetime
 
 # --- CONFIGURACIÓN DE PÁGINA ---
-st.set_page_config(page_title="🚨 AmbuApp - Ambulancias a la Carta", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="FN_MARKET - Emergencias y Seguridad", layout="wide", initial_sidebar_state="expanded")
 
-# --- SIMULACIÓN DE BASE DE DATOS Y SESIÓN ---
-if 'solicitudes_activas' not in st.session_state:
-    st.session_state.solicitudes_activas = pd.DataFrame(columns=['ID', 'Paciente', 'Direccion', 'Lat', 'Lon', 'Estado', 'Ambulancia Asignada', 'Tiempo Estimado'])
-if 'ambulancias_disponibles' not in st.session_state:
-    st.session_state.ambulancias_disponibles = pd.DataFrame({
-        'ID': ['AMB-001', 'AMB-002', 'AMB-003', 'AMB-004'],
-        'Lat': [19.4326 + np.random.uniform(-0.05, 0.05), 19.4326 + np.random.uniform(-0.05, 0.05), 19.4326 + np.random.uniform(-0.05, 0.05), 19.4326 + np.random.uniform(-0.05, 0.05)],
-        'Lon': [-99.1332 + np.random.uniform(-0.05, 0.05), -99.1332 + np.random.uniform(-0.05, 0.05), -99.1332 + np.random.uniform(-0.05, 0.05), -99.1332 + np.random.uniform(-0.05, 0.05)],
-        'Estado': ['Disponible', 'Disponible', 'Disponible', 'Disponible']
+# --- ESTILOS CSS PERSONALIZADOS ---
+st.markdown("""
+    <style>
+    .stButton>button {
+        width: 100%;
+        border-radius: 10px;
+        font-weight: bold;
+    }
+    .report-card {
+        padding: 15px;
+        border-radius: 10px;
+        background-color: #262730;
+        margin-bottom: 10px;
+        border-left: 5px solid #ff4b4b;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+# --- INICIALIZACIÓN DE ESTADO (SIMULACIÓN DB) ---
+if 'ambulancias' not in st.session_state:
+    st.session_state.ambulancias = pd.DataFrame({
+        'ID': ['AMB-001', 'AMB-002', 'AMB-003'],
+        'Lat': [19.4326, 19.4290, 19.4350],
+        'Lon': [-99.1332, -99.1350, -99.1300],
+        'Estado': ['Disponible', 'Disponible', 'Ocupada'],
+        'Tipo': ['Ambulancia'] * 3
     })
-if 'solicitud_enviada' not in st.session_state:
-    st.session_state.solicitud_enviada = False
 
-# --- TÍTULO Y DESCRIPCIÓN ---
-st.title("🚑 AmbuApp: Tu Ambulancia, Rápido y Seguro")
-st.markdown("### Solicita una ambulancia en tiempo real. Estamos para ayudarte.")
+if 'patrullas' not in st.session_state:
+    st.session_state.patrullas = pd.DataFrame({
+        'ID': ['PAT-101', 'PAT-102', 'PAT-103'],
+        'Lat': [19.4310, 19.4340, 19.4300],
+        'Lon': [-99.1320, -99.1340, -99.1310],
+        'Estado': ['Patrullando', 'En Alerta', 'Patrullando'],
+        'Tipo': ['Patrulla'] * 3
+    })
 
-# --- FORMULARIO DE SOLICITUD ---
-st.header("1. ¿Dónde necesitas la ambulancia?")
+if 'incidentes' not in st.session_state:
+    st.session_state.incidentes = []
 
-with st.form("solicitud_form"):
-    nombre_paciente = st.text_input("Nombre del Paciente", placeholder="Ej: Juan Pérez")
-    direccion_recogida = st.text_input("Dirección de Recogida", placeholder="Ej: Calle Falsa 123, Colonia Centro")
-    motivo_emergencia = st.text_area("Motivo de la Emergencia", placeholder="Ej: Caída, dificultad para respirar, accidente automovilístico...")
+if 'solicitud_ambulancia_activa' not in st.session_state:
+    st.session_state.solicitud_ambulancia_activa = None
+
+# --- NAVEGACIÓN PRINCIPAL ---
+st.title("�️ FN_MARKET: Centro de Comando")
+
+tab1, tab2, tab3 = st.tabs(["🚑 Solicitar Ambulancia", "🚨 Reportar Robo/Seguridad", "🗺️ Mapa en Tiempo Real"])
+
+# --- TAB 1: AMBULANCIAS ---
+with tab1:
+    st.header("Servicio Médico de Urgencia")
     
-    # Simulación de Geolocalización (Ciudad de México como referencia)
-    st.markdown("*(Simulación de tu ubicación en Ciudad de México para fines de demostración)*")
-    ubicacion_lat = st.slider("Latitud (Simulada)", min_value=19.0, max_value=20.0, value=19.4326)
-    ubicacion_lon = st.slider("Longitud (Simulada)", min_value=-100.0, max_value=-98.0, value=-99.1332)
+    col1, col2 = st.columns([1, 1])
     
-    submitted = st.form_submit_button("🚨 Solicitar Ambulancia Ahora")
+    with col1:
+        st.markdown("### 📋 Datos del Paciente")
+        with st.form("form_ambulancia"):
+            tipo_emergencia = st.selectbox("Tipo de Emergencia", ["🔴 Crítico (Paro, Trauma)", "🟡 Urgente (Fractura, Dolor)", "🟢 Moderado (Consulta)"])
+            sintomas = st.text_area("Descripción de Síntomas")
+            ubicacion_manual = st.text_input("Ubicación (Si es diferente a GPS actual)")
+            
+            # Simulación GPS
+            user_lat = 19.4326 + np.random.uniform(-0.001, 0.001)
+            user_lon = -99.1332 + np.random.uniform(-0.001, 0.001)
+            
+            submit_amb = st.form_submit_button("🚨 SOLICITAR UNIDAD AHORA")
+            
+            if submit_amb:
+                st.session_state.solicitud_ambulancia_activa = {
+                    'tipo': tipo_emergencia,
+                    'hora': datetime.now().strftime("%H:%M"),
+                    'lat': user_lat,
+                    'lon': user_lon,
+                    'estado': 'En camino'
+                }
+                st.success("¡Solicitud enviada! Buscando unidad más cercana...")
+                time.sleep(1)
+                st.rerun()
 
-if submitted and not st.session_state.solicitud_enviada:
-    if nombre_paciente and direccion_recogida and motivo_emergencia:
-        # Asignar una ambulancia disponible (simulado)
-        ambulancias_libres = st.session_state.ambulancias_disponibles[st.session_state.ambulancias_disponibles['Estado'] == 'Disponible']
-        
-        if not ambulancias_libres.empty:
-            ambulancia_asignada = ambulancias_libres.sample(1).iloc[0]
-            
-            # Calcular tiempo estimado (simulado, basado en distancia aleatoria)
-            tiempo_estimado = np.random.randint(5, 20) 
-            
-            nueva_solicitud = {
-                'ID': f"SOL-{len(st.session_state.solicitudes_activas) + 1:04d}",
-                'Paciente': nombre_paciente,
-                'Direccion': direccion_recogida,
-                'Lat': ubicacion_lat,
-                'Lon': ubicacion_lon,
-                'Estado': 'Pendiente',
-                'Ambulancia Asignada': ambulancia_asignada['ID'],
-                'Tiempo Estimado': f"{tiempo_estimado} minutos"
-            }
-            st.session_state.solicitudes_activas.loc[len(st.session_state.solicitudes_activas)] = nueva_solicitud
-            
-            # Cambiar estado de la ambulancia asignada a 'En Servicio' (simulado)
-            idx = st.session_state.ambulancias_disponibles[st.session_state.ambulancias_disponibles['ID'] == ambulancia_asignada['ID']].index
-            st.session_state.ambulancias_disponibles.loc[idx, 'Estado'] = 'En Servicio'
-            
-            st.success(f"✅ ¡Solicitud enviada! Ambulancia {ambulancia_asignada['ID']} en camino. Tiempo estimado: {tiempo_estimado} minutos.")
-            st.session_state.solicitud_enviada = True
-            time.sleep(2) # Pausa para que el usuario lea el mensaje
-            st.rerun() # Recargar para ver el estado actualizado
+    with col2:
+        if st.session_state.solicitud_ambulancia_activa:
+            st.info(f"✅ Unidad asignada: AMB-001")
+            st.metric(label="Tiempo Estimado de Llegada (ETA)", value="7 min", delta="-1 min")
+            st.map(pd.DataFrame({
+                'lat': [user_lat, 19.4326],
+                'lon': [user_lon, -99.1332],
+                'color': ['#0000FF', '#FF0000']
+            }), zoom=14)
+            if st.button("Cancelar Solicitud"):
+                st.session_state.solicitud_ambulancia_activa = None
+                st.rerun()
         else:
-            st.error("❌ No hay ambulancias disponibles en este momento. Por favor, inténtalo de nuevo o llama al 911.")
+            st.markdown("#### 🏥 Ambulancias Disponibles en tu Zona")
+            st.dataframe(st.session_state.ambulancias[['ID', 'Estado']], use_container_width=True)
+
+# --- TAB 2: SEGURIDAD ---
+with tab2:
+    st.header("Sistema de Alerta Ciudadana")
+    
+    col_alert, col_map_small = st.columns([1, 2])
+    
+    with col_alert:
+        st.error("BOTÓN DE PÁNICO")
+        if st.button("🆘 ALERTA SILENCIOSA INMEDIATA", type="primary"):
+            st.toast("Alerta enviada a patrullas cercanas y contactos de emergencia.", icon="🤫")
+            # Registrar incidente automático
+            st.session_state.incidentes.append({
+                'tipo': 'Pánico',
+                'desc': 'Alerta silenciosa activada',
+                'lat': 19.4326,
+                'lon': -99.1332,
+                'hora': datetime.now().strftime("%H:%M")
+            })
+        
+        st.markdown("---")
+        st.markdown("### Reportar Incidente")
+        with st.form("form_robo"):
+            tipo_robo = st.selectbox("Tipo de Incidente", ["Robo en Curso", "Actividad Sospechosa", "Persona Siguiéndome"])
+            desc_robo = st.text_area("Descripción (Agresores, Vehículos)")
+            foto = st.file_uploader("Adjuntar Evidencia (Foto/Video)", type=['png', 'jpg', 'mp4'])
+            
+            if st.form_submit_button("Enviar Reporte a la Comunidad"):
+                nuevo_incidente = {
+                    'tipo': tipo_robo,
+                    'desc': desc_robo,
+                    'lat': 19.4326 + np.random.uniform(-0.002, 0.002),
+                    'lon': -99.1332 + np.random.uniform(-0.002, 0.002),
+                    'hora': datetime.now().strftime("%H:%M")
+                }
+                st.session_state.incidentes.append(nuevo_incidente)
+                st.success("Reporte registrado y notificado a vecinos.")
+    
+    with col_map_small:
+        st.markdown("### 📢 Alertas Recientes en tu Zona")
+        if st.session_state.incidentes:
+            for inc in st.session_state.incidentes[-3:]:
+                st.markdown(f"""
+                <div class="report-card">
+                    <b>{inc['tipo']}</b> - {inc['hora']}<br>
+                    {inc['desc']}
+                </div>
+                """, unsafe_allow_html=True)
+        else:
+            st.info("No hay reportes recientes en tu zona. ¡Mantente seguro!")
+
+# --- TAB 3: MAPA GLOBAL ---
+with tab3:
+    st.header("Mapa en Tiempo Real")
+    
+    # Combinar datos para el mapa
+    map_layers = []
+    
+    # Ambulancias (Verde)
+    df_amb = st.session_state.ambulancias.copy()
+    df_amb['color'] = '#00FF00'
+    df_amb['size'] = 100
+    
+    # Patrullas (Azul)
+    df_pat = st.session_state.patrullas.copy()
+    df_pat['color'] = '#0000FF'
+    df_pat['size'] = 100
+    
+    # Incidentes (Rojo)
+    incident_data = []
+    for inc in st.session_state.incidentes:
+        incident_data.append({'lat': inc['lat'], 'lon': inc['lon'], 'color': '#FF0000', 'size': 50, 'ID': inc['tipo']})
+    
+    df_inc = pd.DataFrame(incident_data) if incident_data else pd.DataFrame(columns=['lat', 'lon', 'color', 'size', 'ID'])
+    
+    # Unir todo
+    if not df_inc.empty:
+        map_data = pd.concat([
+            df_amb[['Lat', 'Lon', 'color', 'size']].rename(columns={'Lat': 'lat', 'Lon': 'lon'}),
+            df_pat[['Lat', 'Lon', 'color', 'size']].rename(columns={'Lat': 'lat', 'Lon': 'lon'}),
+            df_inc[['lat', 'lon', 'color', 'size']]
+        ], ignore_index=True)
     else:
-        st.error("Por favor, rellena todos los campos.")
-elif st.session_state.solicitud_enviada:
-    st.info("Ya has enviado una solicitud. Revisa el estado abajo.")
+        map_data = pd.concat([
+            df_amb[['Lat', 'Lon', 'color', 'size']].rename(columns={'Lat': 'lat', 'Lon': 'lon'}),
+            df_pat[['Lat', 'Lon', 'color', 'size']].rename(columns={'Lat': 'lat', 'Lon': 'lon'})
+        ], ignore_index=True)
 
-st.divider()
+    st.map(map_data, color='color', size='size', zoom=13)
+    
+    st.markdown("**Leyenda:** 🟢 Ambulancia | 🔵 Patrulla | 🔴 Incidente Reportado")
 
-# --- MAPA Y ESTADO DE LAS AMBULANCIAS ---
-st.header("2. Mapa y Estado Actual")
-
-# Mostrar las ambulancias y la solicitud del usuario en un mapa
-map_data = pd.DataFrame({
-    'lat': st.session_state.ambulancias_disponibles['Lat'].tolist() + ([ubicacion_lat] if st.session_state.solicitud_enviada else []),
-    'lon': st.session_state.ambulancias_disponibles['Lon'].tolist() + ([ubicacion_lon] if st.session_state.solicitud_enviada else []),
-    'size': [100 if s == 'Disponible' else 150 for s in st.session_state.ambulancias_disponibles['Estado']] + ([200] if st.session_state.solicitud_enviada else []),
-    'color': ['#00FF00' if s == 'Disponible' else '#FF0000' for s in st.session_state.ambulancias_disponibles['Estado']] + (['#0000FF'] if st.session_state.solicitud_enviada else []),
-    'label': st.session_state.ambulancias_disponibles['ID'].tolist() + (['Tu Solicitud'] if st.session_state.solicitud_enviada else [])
-})
-
-st.map(map_data,
-       latitude='lat',
-       longitude='lon',
-       size='size',
-       color='color',
-       zoom=10)
-
-st.subheader("Ambulancias y Solicitudes Activas:")
-st.dataframe(st.session_state.solicitudes_activas, use_container_width=True)
-st.dataframe(st.session_state.ambulancias_disponibles, use_container_width=True)
-
-# --- PANEL DE ADMINISTRACIÓN SIMULADO (Sidebar) ---
-st.sidebar.markdown("---")
-st.sidebar.subheader("Panel de Operaciones (Simulado)")
-
-selected_amb = st.sidebar.selectbox("Ambulancia para Gestionar", st.session_state.ambulancias_disponibles['ID'].tolist())
-new_amb_state = st.sidebar.selectbox("Cambiar Estado a", ['Disponible', 'En Servicio', 'Mantenimiento'])
-
-if st.sidebar.button("Actualizar Estado de Ambulancia"):
-    idx = st.session_state.ambulancias_disponibles[st.session_state.ambulancias_disponibles['ID'] == selected_amb].index
-    st.session_state.ambulancias_disponibles.loc[idx, 'Estado'] = new_amb_state
-    st.sidebar.success(f"Estado de {selected_amb} actualizado a {new_amb_state}")
+# --- SIDEBAR: SIMULADOR ---
+st.sidebar.title("🔧 Panel de Control")
+st.sidebar.info("Modo Desarrollador Activo")
+if st.sidebar.button("Reiniciar Datos"):
+    st.session_state.clear()
     st.rerun()
-
-st.sidebar.button("Reiniciar Simulador", on_click=lambda: st.session_state.clear())
